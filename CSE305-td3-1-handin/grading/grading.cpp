@@ -164,15 +164,6 @@ int test_account(std::ostream &out, const std::string test_name) {
         res.push_back(1);
     }
 
-    std::future<int> f = std::async(std::launch::async, &check_deadlock);
-    std::future_status status = f.wait_for(std::chrono::seconds(5));
-    if (status != std::future_status::ready) {
-        print(out, "Dealocks in parallel transfer");
-        res.push_back(0);
-    } else {
-        res.push_back(1);
-    }
-
     std::vector<unsigned int> ids1;
     std::vector<unsigned int> ids2;
     std::thread t5(&generate_accounts1, std::ref(ids1));
@@ -188,6 +179,15 @@ int test_account(std::ostream &out, const std::string test_name) {
         } else {
             res.push_back(1);
         }
+    }
+
+    std::future<int> f = std::async(std::launch::async, &check_deadlock);
+    std::future_status status = f.wait_for(std::chrono::seconds(5));
+    if (status != std::future_status::ready) {
+        print(out, "Dealocks in parallel transfer");
+        res.push_back(0);
+    } else {
+        res.push_back(1);
     }
 
     return end_test_suite(out, test_name,

@@ -34,7 +34,7 @@ bool FindParallel(T* arr, size_t N, T target, size_t count, size_t num_threads) 
     auto thread_func = [&](T* start, T* end) {
         while (start != end)
             if (*start++ == target)
-                if (++exists > count)
+                if (++exists >= count)
                     return;
     };
 
@@ -54,17 +54,22 @@ bool FindParallel(T* arr, size_t N, T target, size_t count, size_t num_threads) 
 class Account {
         unsigned int amount;
         unsigned int account_id;
-        std::mutex lock;
+        static std::mutex lock;
 
         static std::atomic<unsigned int> max_account_id;
     public:
         Account() {
+            this->lock.lock();
             this->amount = 0;
             this->account_id = ++max_account_id;
+            this->lock.unlock();
         }
 
         Account(unsigned int amount) {
+            this->lock.lock();
             this->amount = amount;
+            this->account_id = ++max_account_id;
+            this->lock.unlock();
         }
 
         // copy-contructor and assignment are deleted to make the id's really unique
@@ -73,7 +78,10 @@ class Account {
         Account& operator = (const Account& other) = delete;
 
         unsigned int get_amount() const {
-            return this->amount;
+            this->lock.lock();
+            unsigned int amt = this->amount;
+            this->lock.unlock();
+            return amt;
         }
 
         unsigned int get_id() const {
@@ -83,29 +91,40 @@ class Account {
         // withdrwas deduction if the current amount is at least deduction
         // returns whether the withdrawal took place
         bool withdraw(unsigned int deduction) {
-            if (this->amount > deduction) {
+            this->lock.lock();
+            if (this->amount >= deduction) {
                 this->amount -= deduction;
+                this->lock.unlock();
                 return true;
             }
+            this->lock.unlock();
             return false;
         }
 
         // adds the prescribed amount of money to the account
         void add(unsigned int to_add) {
+            this->lock.lock();
             this->amount += to_add;
+            this->lock.unlock();
         }
 
         // transfers amount from from to to if there are enough money on from
         // returns whether the transfer happened
         static bool transfer(unsigned int amount, Account& from, Account& to) {
-            if (from.withdraw(amount)) {
+            if (from.get_id() == to.get_id()) return false;
+            if (from.get_amount() < amount) return false;
+            if (from.get_id() > to.get_id()) {
                 to.add(amount);
+                from.withdraw(amount);
                 return true;
             }
-            return false;
+            from.withdraw(amount);
+            to.add(amount);
+            return true;
         }
 };
 
+std::mutex Account::lock;
 std::atomic<unsigned int> Account::max_account_id(0);
 
 //-----------------------------------------------------------------------------
