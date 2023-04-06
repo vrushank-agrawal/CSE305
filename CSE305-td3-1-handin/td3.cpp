@@ -54,16 +54,11 @@ bool FindParallel(T* arr, size_t N, T target, size_t count, size_t num_threads) 
 class Account {
         unsigned int amount;
         unsigned int account_id;
-        static std::mutex lock;
+        std::mutex lock;
 
         static std::atomic<unsigned int> max_account_id;
     public:
-        Account() {
-            this->lock.lock();
-            this->amount = 0;
-            this->account_id = ++max_account_id;
-            this->lock.unlock();
-        }
+        Account() : Account(0) {};
 
         Account(unsigned int amount) {
             this->lock.lock();
@@ -78,10 +73,7 @@ class Account {
         Account& operator = (const Account& other) = delete;
 
         unsigned int get_amount() const {
-            this->lock.lock();
-            unsigned int amt = this->amount;
-            this->lock.unlock();
-            return amt;
+            return this->amount;
         }
 
         unsigned int get_id() const {
@@ -112,19 +104,13 @@ class Account {
         // returns whether the transfer happened
         static bool transfer(unsigned int amount, Account& from, Account& to) {
             if (from.get_id() == to.get_id()) return false;
-            if (from.get_amount() < amount) return false;
-            if (from.get_id() > to.get_id()) {
+            bool success = from.withdraw(amount);
+            if (success)
                 to.add(amount);
-                from.withdraw(amount);
-                return true;
-            }
-            from.withdraw(amount);
-            to.add(amount);
-            return true;
+            return success;
         }
 };
 
-std::mutex Account::lock;
 std::atomic<unsigned int> Account::max_account_id(0);
 
 //-----------------------------------------------------------------------------
