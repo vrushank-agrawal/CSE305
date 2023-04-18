@@ -1,2 +1,8 @@
-*.out
+# Ignore object files and executables
 *.o
+*.obj
+*.sqlite
+*.exe
+*.out
+*.nsys-rep
+*.nsys
