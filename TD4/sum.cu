@@ -134,3 +134,9 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+/*
+ * For one run it takes 118688 microseconds when run on the GPU
+ * out of which the code on the GPU itself takes only 5092 microseconds
+ * where rest of the time is spent on copying the data to and from the GPU
+ * and also on the CPU side for the final sum.
+ */

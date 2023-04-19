@@ -65,17 +65,15 @@ void SumParallel(double* result, size_t N, size_t num_threads) {
     result[0] = std::accumulate(results.begin(), results.end(), 0.0);
 }
 
-__global__ void SumDistancesGPUAux(double* arr, size_t dim, size_t N, double* result) {
+__global__ void SumDistancesGPUAux(double* arr, size_t dim, size_t N, double* result, size_t start_pt) {
     size_t curr_pt = blockIdx.x * blockDim.x + threadIdx.x;
-
+    curr_pt += start_pt;
     if (curr_pt >= N) return;
 
     double* p = arr + (curr_pt * dim);
     double sum = 0;
-    for (size_t i = 0; i < N; ++i) {
-        if (i == curr_pt) continue;
+    for (size_t i = curr_pt+1; i < N; ++i)
         sum += DistKer(p, arr + (i * dim), dim);
-    }
 
     result[curr_pt] = sum;
 }
@@ -101,7 +99,7 @@ double SumDistancesGPU(double* arr, size_t dim, size_t N) {
     cudaMemcpy(arrGPU, arr, N * dim * sizeof(double), cudaMemcpyHostToDevice);
 
     for (size_t i = 0; i < N; i += total_threads)
-        SumDistancesGPUAux<<<block_size, threads_per_block>>>(arrGPU + (i * dim * total_threads), dim, N, resultGPU + (i * total_threads));
+        SumDistancesGPUAux<<<block_size, threads_per_block>>>(arrGPU, dim, N, resultGPU, i);
     cudaDeviceSynchronize();
 
     cudaMemcpy(result, resultGPU, N * sizeof(double), cudaMemcpyDeviceToHost);
@@ -112,7 +110,7 @@ double SumDistancesGPU(double* arr, size_t dim, size_t N) {
     SumParallel(result, N, 8);
     double sum = result[0];
     delete[] result;
-    return sum/2;
+    return sum;
 }
 
 //---------------------------------------------------
@@ -125,7 +123,7 @@ int main(int argc, char* argv[]) {
     int alg_ind = std::stoi(argv[1]);
 
     // Generating data
-    size_t N = 5000;
+    size_t N = 40000;
     size_t dim = 5;
     double* arr = (double*) malloc(N * dim * sizeof(double));
     for (size_t i = 0; i < dim * N; ++i) {
@@ -150,3 +148,28 @@ int main(int argc, char* argv[]) {
     delete[] arr;
     return 0;
 }
+
+
+/*
+ * N = 6000
+    * CPU = 344785
+    * GPU = 124775
+ * N = 7000
+    * CPU = 465947
+    * GPU = 130781
+ * N = 8000
+    * CPU = 622027
+    * GPU = 131737
+ * N = 9000
+    * CPU = 797270
+    * GPU = 142467
+ * N = 10000
+    * CPU = 938290
+    * GPU = 152868
+
+ As we can see, the GPU version is much faster than the CPU version.
+ The CPU version grows linearly with N as the computation is done sequentially.
+ The GPU version grows much slower as the computation is done in parallel and
+ the increase in time is majorly due to the copying back and forth of data
+ as well as time taken to sum the results in the CPU.
+*/

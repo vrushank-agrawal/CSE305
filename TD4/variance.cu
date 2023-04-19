@@ -146,3 +146,10 @@ int main(int argc, char* argv[]) {
     delete[] arr;
     return 0;
 }
+
+/*
+ * For one run it takes 182247 microseconds when run on the GPU
+ * out of which the code on the GPU itself takes only 5352 microseconds
+ * where rest of the time is spent on copying the data to and from the GPU
+ * and also on the CPU side for the final sum.
+ */
