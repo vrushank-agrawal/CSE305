@@ -54,10 +54,7 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "condition_variable": "cpp",
-        "chrono": "cpp",
-        "fstream": "cpp",
-        "mutex": "cpp"
+        "condition_variable": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++17",
     "C_Cpp.default.cStandard": "c99"

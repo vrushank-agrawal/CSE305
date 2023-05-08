@@ -2,15 +2,6 @@
 #include <iostream>
 #include <chrono>
 #include <math.h>
-#include <cfloat>
-#include <climits>
-#include <thread>
-#include <numeric>
-#include <iterator>
-#include <vector>
-#include <atomic>
-#include <cmath>
-#include <mutex>
 
 //------------------------------------------------
 
@@ -24,43 +15,18 @@ double Sum(double* arr, size_t N) {
 
 //-------------------------------------------------
 
-void SumMapThread(double* arr, size_t begin, size_t end, double& result) {
-    while (begin != end)
-        result += arr[begin++];
-}
-
-void SumParallel(double* result, size_t N, size_t num_threads) {
-    size_t block_size = N / num_threads;
-    std::vector<double> results(num_threads, 0.0);
-
-    std::vector<std::thread> workers(num_threads - 1);
-    for (size_t i = 0; i < num_threads - 1; i++)
-        workers[i] = std::thread(&SumMapThread,
-                                result,
-                                (i*block_size),
-                                ((i+1)*block_size),
-                                std::ref(results[i]));
-    SumMapThread(result, (num_threads-1)*block_size, N, results[num_threads - 1]);
-
-    for (auto& t : workers) t.join();
-    result[0] = std::accumulate(results.begin(), results.end(), 0.0);
-}
-
-__global__ void PartialSumGPUAux(double* arr, double* partial_sums, size_t N, size_t chunk_size) {
-    size_t index = blockIdx.x * blockDim.x + threadIdx.x;
-    size_t begin = chunk_size * index;
-    size_t end = chunk_size * (index + 1);
+__global__
+void PartialSumGPUAux(double* arr, double* partial_sums, size_t N, size_t chunk_size) {
+    // implement partial sum of the array on GPU using cuda
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t start = tid * chunk_size;
+    size_t end = std::min(start + chunk_size, N);
     double sum = 0.;
-
-    if (end > N)
-        end = N;
-
-    for (size_t i = begin; i < end; ++i)
+    for (size_t i = start; i < end; ++i) {
         sum += arr[i];
-
-    partial_sums[index] = sum;
+        partial_sums[tid] = sum;
+    }
 }
-
 /**
  * @brief Computes the sum of the array
  * @param arr - the pointer to the beginning of an array
@@ -73,30 +39,23 @@ double SumGPU(double* arr, size_t N) {
     const size_t TOTAL_THREADS = BLOCKS_NUM  * THREADS_PER_BLOCK;
 
     // moving the data to device
-    double* result = new double[TOTAL_THREADS];
     double* arrGPU;
-    double* partialResGPU;
     cudaMalloc(&arrGPU, N * sizeof(double));
-    cudaMalloc(&partialResGPU, TOTAL_THREADS * sizeof(double));
-    cudaMemcpy(arrGPU, arr, N * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(arr, arrGPU, N * sizeof(double), cudaMemcpyHostToDevice);
 
     // computing on GPU
     size_t chunk_size = (N + TOTAL_THREADS + 1) / TOTAL_THREADS;
-    PartialSumGPUAux<<<BLOCKS_NUM, THREADS_PER_BLOCK>>>(arrGPU, partialResGPU, N, chunk_size);
+    AddGPUAux<<<BLOCKS_NUM, THREADS_PER_BLOCK>>>(xd, yd, resd, N, chunk_size);
     cudaDeviceSynchronize();
 
     // copying the result back
-    cudaMemcpy(result, partialResGPU, TOTAL_THREADS * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(res, resd, N * sizeof(double), cudaMemcpyDeviceToHost);
 
     // Free memory
-    cudaFree(arrGPU);
-    cudaFree(partialResGPU);
+    cudaFree(xd);
+    cudaFree(yd);
+    cudaFree(resd);
 
-    SumParallel(result, TOTAL_THREADS, 8);
-    double res = result[0];
-    delete[] result;
-
-    return res;
 }
 
 //---------------------------------------------------
@@ -133,10 +92,3 @@ int main(int argc, char* argv[]) {
     delete[] arr;
     return 0;
 }
-
-/*
- * For one run it takes 118688 microseconds when run on the GPU
- * out of which the code on the GPU itself takes only 5092 microseconds
- * where rest of the time is spent on copying the data to and from the GPU
- * and also on the CPU side for the final sum.
- */
