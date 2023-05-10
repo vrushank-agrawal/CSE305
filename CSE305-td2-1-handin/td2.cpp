@@ -22,7 +22,7 @@ double MaxParallel(double* start, size_t N, size_t num_threads) {
 
     size_t block_size = N / num_threads;
 
-    int max = INT_MIN;
+    double max = DBL_MIN;
     std::mutex m;
     std::vector<std::thread> workers(num_threads-1);
 
@@ -30,7 +30,7 @@ double MaxParallel(double* start, size_t N, size_t num_threads) {
      * race conditions by using mutexes and locks
      */
     auto thread_func = [&](double* begin, size_t block_size){
-        int local_max = INT_MIN;
+        double local_max = DBL_MIN;
         for (size_t i = 0; i < block_size; i++)
             if (*begin++ > local_max)
                 local_max = *(begin-1);
@@ -87,8 +87,8 @@ void PrefixMaximums(double* start, size_t N, size_t num_threads, double* res_sta
 
     /* We compute the maximums of the chunks until N-1 chuncks where N is total number of chunks */
     for (size_t i = 0; i < num_threads - 1; i++)
-        workers[i] = std::thread(&PartialMax, start + (i*chunk_length), chunk_length, res_start + (i*chunk_length), INT_MIN);
-    PartialMax(start + ((num_threads-1)*chunk_length), chunk_length, res_start + ((num_threads-1)*chunk_length), INT_MIN);
+        workers[i] = std::thread(&PartialMax, start + (i*chunk_length), chunk_length, res_start + (i*chunk_length), DBL_MIN);
+    PartialMax(start + ((num_threads-1)*chunk_length), chunk_length, res_start + ((num_threads-1)*chunk_length), DBL_MIN);
 
     for (auto& t : workers) t.join();
 
