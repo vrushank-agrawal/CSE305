@@ -10,24 +10,19 @@ class OrderedVec {
     std::vector<int> data;
     std::mutex m;
     std::atomic<bool> inserting{false};
+    std::atomic<int> searching{0};
 
 public:
     void insert(int val) {
         // Set inserting to true
         inserting.store(true, std::memory_order_release);
 
-        std::lock_guard<std::mutex> lock(m);
-        if (data.empty()) {
-            data.push_back(val);
-        } else {
-            // if the vector is not sorted, sort it
-            if (!std::is_sorted(data.begin(), data.end()))
-                std::sort(data.begin(), data.end());
+        while (searching.load(std::memory_order_acquire) > 0)
+            ;
 
-            // find the first element that is greater than val and insert val before it
-            auto greater_val = std::upper_bound(data.begin(), data.end(), val);
-            data.insert(greater_val, val);
-        }
+        std::lock_guard<std::mutex> lock(m);
+        // find the first element that is greater than val and insert val before it
+        data.insert(std::upper_bound(data.begin(), data.end(), val), val);
 
         // Set inserting to false
         inserting.store(false, std::memory_order_release);
@@ -35,15 +30,17 @@ public:
 
     bool search(int val) {
         // If an insertion is happening don't start a search
-        if (inserting.load(std::memory_order_acquire))
-            return false;
+        while (inserting.load(std::memory_order_acquire))
+            ;
+
+        searching.fetch_add(1, std::memory_order_relaxed);
 
         // Search the data
-        std::lock_guard<std::mutex> lock(m);
-        if (std::find(data.begin(), data.end(), val) != data.end())
-            return true;
+        bool found = std::find(data.begin(), data.end(), val) != data.end();
 
-        return false;
+        searching.fetch_sub(1, std::memory_order_relaxed);
+
+        return found;
     }
 
     // used for testing
