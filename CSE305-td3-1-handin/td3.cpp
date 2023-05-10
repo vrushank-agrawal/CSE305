@@ -104,6 +104,16 @@ class Account {
         // returns whether the transfer happened
         static bool transfer(unsigned int amount, Account& from, Account& to) {
             if (from.get_id() == to.get_id()) return false;
+
+            // lock the accounts in order of their id's to avoid deadlocks
+            if (from.get_id() > to.get_id()) {
+                std::lock_guard<std::mutex> lock1(from.lock);
+                std::lock_guard<std::mutex> lock2(to.lock);
+            } else {
+                std::lock_guard<std::mutex> lock2(to.lock);
+                std::lock_guard<std::mutex> lock1(from.lock);
+            }
+
             bool success = from.withdraw(amount);
             if (success)
                 to.add(amount);
