@@ -78,7 +78,7 @@ Node* SetList::search(const std::string& val) const {
         curr = curr->next;
         curr->lock.lock();
     }
-    return pred; 
+    return pred;
 }
 
 bool SetList::add(const std::string& val) {
