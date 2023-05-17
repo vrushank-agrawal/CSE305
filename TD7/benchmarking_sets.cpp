@@ -74,31 +74,18 @@ int main(int argc, char* argv[]) {
 
 SPACE TO REPORT AND ANALYZE THE RUNTIMES
 
-1.  1 thread, 1000 insertions
-    Time for coare-grained version is 742 microseconds
-    Time for fine-grained version is 3026 microseconds
+Time reported in microseconds and as coare-grained / fine-grained
 
-    8 threads, 1000 insertions
-    Time for coare-grained version is 55929 microseconds
-    Time for fine-grained version is 43873 microseconds
+Insertions:     1000        10000           30000
+Threads:
 
-2.  1 thread, 10000 insertions
-    Time for coare-grained version is 131488 microseconds
-    Time for fine-grained version is 338471 microseconds
+    1         742/3026   131488/338471   2395682/3783280
 
-    8 threads, 10000 insertions
-    Time for coare-grained version is 356591 microseconds
-    Time for fine-grained version is 308806 microseconds
+    4       41540/39619   312144/290569  883967/855250
 
-3.  1 thread, 30000 insertions
-    Time for coare-grained version is 2395682 microseconds
-    Time for fine-grained version is 3783280 microseconds
+    8       55929/43873   356591/308806   850268/842419
 
-    8 threads, 30000 insertions
-    Time for coare-grained version is 1050977 microseconds
-    Time for fine-grained version is 851559 microseconds
-
-4.  for more than 32743 insertions on multiple threads my computer complains
+NOTE: for more than 32743 insertions on multiple threads my computer complains
 
 Explanation:
 
