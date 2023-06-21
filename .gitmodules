@@ -1,0 +1,3 @@
+[submodule "n-body-simulation"]
+	path = n-body-simulation
+	url = https://github.com/nhat-vo/n-body-simulation
